@@ -29,19 +29,20 @@ export const AuthProvider = ({ children }) => {
   const [initiaLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    //this is the listener that returns unscribe object
-    const unsub = onAuthStateChanged(auth, (user) => {
-      //onAuthStateChange is used to track the state of auth (sigin , signout)
-      if (user) {
-        setUser(user);
-      } else {
-        setUser(null);
-      }
-      setInitialLoading(false);
-    });
-    return unsub;
-  }, []);
+  useEffect(
+    () =>
+      onAuthStateChanged(auth, (user) => {
+        //onAuthStateChange is used to track the state of auth (sigin , signout)
+        if (user) {
+          setUser(user);
+        } else {
+          setUser(null);
+        }
+        setInitialLoading(false);
+      }),
+
+    []
+  );
 
   const logout = async () => {
     setLoading(true);

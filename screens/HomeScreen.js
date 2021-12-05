@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useLayoutEffect, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import { useAuth } from "../hooks/useAuth";
 import tw from "tailwind-rn";
 import { AntDesign, Entypo, Ionicons } from "@expo/vector-icons";
 import Swiper from "react-native-deck-swiper";
+import { doc, onSnapshot, collection } from "firebase/firestore";
+import { db } from "../firebase";
 
 const dummy_data = [
   {
@@ -65,7 +67,34 @@ const dummy_data = [
 const HomeScreen = () => {
   const navigation = useNavigation();
   const { user, logout } = useAuth();
+  const [profiles, setProfiles] = useState([]);
   const swipeRef = useRef(null);
+
+  useLayoutEffect(() => {
+    onSnapshot(doc(db, "users", user.uid), (snapshot) => {
+      if (!snapshot.exists()) {
+        navigation.navigate("Modal");
+      } else {
+        navigation.navigate("Home");
+      }
+    });
+    //redirect to the Modal screen if no user is registered
+  }, []);
+
+  useEffect(() => {
+    let unsub;
+    const fetchCards = async () => {
+      unsub = onSnapshot(collection(db, "users"), (snapshot) => {
+        setProfiles(
+          snapshot.docs
+            .filter((doc) => doc.id !== user.uid)
+            .map((doc) => ({ id: doc.id, ...doc.data() }))
+        );
+      });
+    };
+    fetchCards();
+    return unsub;
+  }, []);
 
   return (
     <SafeAreaView style={tw("flex-1")}>
@@ -95,7 +124,7 @@ const HomeScreen = () => {
         <Swiper
           ref={swipeRef}
           containerStyle={{ backgroundColor: "transparent" }}
-          cards={dummy_data}
+          cards={profiles}
           stackSize={5}
           cardIndex={0}
           animateCardOpacity
@@ -121,33 +150,52 @@ const HomeScreen = () => {
               },
             },
           }}
-          renderCard={(card) => (
-            <View
-              key={card.id}
-              style={tw("h-3/4 bg-white rounded-xl relative")}
-            >
-              <Image
-                style={tw("absolute top-0 h-full w-full rounded-xl")}
-                source={{ uri: card.photoURL }}
-              />
+          renderCard={(card) =>
+            card ? (
+              <View
+                key={card.id}
+                style={tw("h-3/4 bg-white rounded-xl relative")}
+              >
+                <Image
+                  style={tw("absolute top-0 h-full w-full rounded-xl")}
+                  source={{ uri: card.photoURL }}
+                />
+                <View
+                  style={[
+                    tw(
+                      "absolute bottom-0 bg-white w-full h-20 justify-between items-center flex-row px-6 py-2 rounded-b-xl"
+                    ),
+                    styles.cardShadow,
+                  ]}
+                >
+                  <View>
+                    <Text style={tw("text-xl font-bold")}>
+                      {card.displayName}
+                    </Text>
+                    <Text>{card.job}</Text>
+                  </View>
+                  <Text style={tw("text-2xl font-bold")}>{card.age}</Text>
+                </View>
+              </View>
+            ) : (
               <View
                 style={[
                   tw(
-                    "absolute bottom-0 bg-white w-full h-20 justify-between items-center flex-row px-6 py-2 rounded-b-xl"
+                    "relative bg-white h-3/4 rounded-xl justify-center items-center"
                   ),
                   styles.cardShadow,
                 ]}
               >
-                <View>
-                  <Text style={tw("text-xl font-bold")}>
-                    {card.firstName} {card.lastName}
-                  </Text>
-                  <Text>{card.occupation}</Text>
-                </View>
-                <Text style={tw("text-2xl font-bold")}>{card.age}</Text>
+                <Text style={tw("pb-5 font-bold")}> No More Profiles </Text>
+                <Image
+                  style={tw("h-20 w-full")}
+                  height={100}
+                  width={100}
+                  source={{ url: "https://links.papareact.com/6gb" }}
+                />
               </View>
-            </View>
-          )}
+            )
+          }
         />
       </View>
       <View style={tw("flex-row flex justify-evenly bottom-8")}>
