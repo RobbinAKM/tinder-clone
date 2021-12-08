@@ -24,6 +24,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { generateId } from "../lib/generateId";
 
 const dummy_data = [
   {
@@ -134,8 +135,43 @@ const HomeScreen = () => {
     if (!profiles[cardIndex]) return;
     const swipedUser = profiles[cardIndex];
 
-    console.log(swipedUser.displayName);
-    setDoc(doc(db, "users", user.uid, "swipes", swipedUser.id), swipedUser);
+    const loggedInUser = await (await getDoc(db, "users", user.uid)).data();
+
+    //check if the user swipe on you
+    getDoc(doc(db, "users", swipedUser.id, "swipes", user.uid)).then(
+      (documentSnapshot) => {
+        if (documentSnapshot.exists()) {
+          //user has matched with you before you matched with them
+          //create a match
+          console.log(`you matched with ${swipedUser.displayName}`);
+          setDoc(
+            doc(db, "users", user.uid, "swipes", swipedUser.id),
+            swipedUser
+          );
+
+          //create a match
+          setDoc(doc(db, "matches", generateId(user.uid, swipedUser.id)), {
+            users: {
+              [user.uid]: loggedInUser,
+              [swipedUser.id]: swipedUser,
+            },
+            userMatched: [user.uid, swipedUser.id],
+          });
+
+          navigation.navigate("Match", {
+            loggedInUser,
+            swipedUser,
+          });
+        } else {
+          //user has swiped first or didnt get swiped at all
+          console.log(swipedUser.displayName);
+          setDoc(
+            doc(db, "users", user.uid, "swipes", swipedUser.id),
+            swipedUser
+          );
+        }
+      }
+    );
   };
 
   return (
